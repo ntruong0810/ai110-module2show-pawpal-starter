@@ -41,3 +41,57 @@ pip install -r requirements.txt
 5. Add tests to verify key behaviors.
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
+
+## Testing PawPal+
+
+### Running Tests
+
+To run the complete test suite:
+
+```bash
+python -m pytest test/test_pawpal.py -v
+```
+
+Or for a quick summary:
+
+```bash
+python -m pytest test/test_pawpal.py -q
+```
+
+### Test Coverage
+
+The test suite includes **41 tests** covering:
+
+- **Task Completion** (6 tests) — task status transitions, feasibility checks
+- **Pet Task Management** (8 tests) — adding/removing tasks, pending task filtering, time overlap detection
+- **Scheduler Logic** (15 tests) — conflict detection across pets, recurring task creation, time-based sorting, priority scoring, knapsack optimization, daily planning
+- **Owner Task Access** (7 tests) — cross-pet filtering, global overlap detection, task aggregation
+- **Plan Management** (3 tests) — plan task management, summarization
+
+**Key behaviors verified:**
+
+- ✅ Recurring tasks (daily/weekly) automatically generate next occurrence on completion
+- ✅ Time overlaps detected within same pet and across different pets
+- ✅ Global schedule shared across all pets (no double-booking owner's time)
+- ✅ Mandatory tasks prioritized before optional tasks
+- ✅ 0/1 knapsack optimization for optional tasks within time budget
+- ✅ Task sorting by HH:MM custom time windows
+- ✅ Owner preferences affect task scoring
+
+### Confidence Level
+
+**⭐⭐⭐⭐ (4/5 stars)**
+
+**Why confident:**
+
+- All 41 tests pass with no failures
+- Core scheduling logic is well-tested (mandatory vs optional, knapsack, scoring)
+- Time overlap detection works correctly at owner level (cross-pet)
+- Recurring task generation with timedelta is properly tested
+
+**What could improve confidence to 5 stars:**
+
+- Integration tests between Streamlit UI and core logic
+- Edge cases: very long task names, extreme time windows, empty owner scenarios
+- Performance tests with 50+ tasks
+- Timezone handling for recurring tasks
