@@ -6,11 +6,19 @@
 
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
-
+In my initial UML design, I structured the system around a few core classes: Owner, Pet, Task, Scheduler, and Plan. The Owner class stores basic information about the user, such as available time and preferences. The Pet class represents the pet being cared for, including its type and needs.
+The Task class is central to the system, representing individual care activities like feeding, walking, or giving medication. Each task includes attributes such as duration and priority. The Scheduler class is responsible for generating a daily plan by selecting and organizing tasks based on constraints like available time and priority. Finally, the Plan class stores the resulting schedule and provides a way to display or explain it.
+Overall, I aimed to separate responsibilities clearly: data representation (Owner, Pet, Task) and decision-making logic (Scheduler), with Plan acting as the output container.
 **b. Design changes**
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
+
+During implementation, I made a key change to simplify the interaction between classes. Initially, I planned for the Scheduler to directly manage all logic, including filtering, sorting, and explanation generation. However, this made the Scheduler too complex and harder to maintain.
+
+To improve this, I refactored part of the logic by adding helper methods (or lightweight internal functions) to handle specific tasks such as sorting tasks by priority and checking time constraints. This made the Scheduler more modular and easier to test.
+
+This change was important because it improved code readability, made debugging easier, and allowed me to test individual parts of the scheduling logic more effectively.
 
 ---
 
