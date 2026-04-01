@@ -1,0 +1,65 @@
+{
+  "name": "Jordan",
+  "available_minutes_per_day": 120,
+  "preferences": [],
+  "pets": [
+    {
+      "name": "Mochi",
+      "pet_type": "dog",
+      "tasks": [
+        {
+          "name": "Morning walk",
+          "duration_minutes": 20,
+          "priority": "high",
+          "required_for": "Mochi",
+          "description": "",
+          "time_window": "any",
+          "custom_time_frame_start": "08:00",
+          "custom_time_frame_end": "08:20",
+          "mandatory": false,
+          "frequency": "once",
+          "status": "pending",
+          "due_date": null
+        },
+        {
+          "name": "Morning walk",
+          "duration_minutes": 20,
+          "priority": "high",
+          "required_for": "Mochi",
+          "description": "",
+          "time_window": "any",
+          "custom_time_frame_start": "08:30",
+          "custom_time_frame_end": "08:50",
+          "mandatory": false,
+          "frequency": "once",
+          "status": "pending",
+          "due_date": null
+        },
+        {
+          "name": "Morning walk",
+          "duration_minutes": 50,
+          "priority": "high",
+          "required_for": "Mochi",
+          "description": "",
+          "time_window": "any",
+          "custom_time_frame_start": "09:45",
+          "custom_time_frame_end": "10:35",
+          "mandatory": false,
+          "frequency": "once",
+          "status": "pending",
+          "due_date": null
+        }
+      ]
+    },
+    {
+      "name": "Mocha",
+      "pet_type": "cat",
+      "tasks": []
+    },
+    {
+      "name": "MoMo",
+      "pet_type": "cat",
+      "tasks": []
+    }
+  ]
+}

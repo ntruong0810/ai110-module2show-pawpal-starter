@@ -37,10 +37,25 @@ These changes were made to reduce coupling, improve testability (each method has
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
+The scheduler considers multiple constraints:
+
+1. **Time budget**: Total available minutes per day across all pets (shared global budget).
+2. **Task priority**: Critical > High > Medium > Low, with mandatory tasks getting a boost.
+3. **Time windows**: Custom HH:MM ranges and semantic windows (morning/afternoon/evening).
+4. **Owner preferences**: Tasks matching owner keywords receive scoring bonuses.
+5. **Mandatory vs optional**: Mandatory tasks are scheduled first, then optional tasks are optimized via 0/1 knapsack.
+
+I prioritized constraints in this order because the owner's time is finite (absolute constraint), then mandatory care must happen (survival), then we optimize remaining time with preferences.
+
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+One key tradeoff: **Global daily budget vs. per-pet fairness**.
+
+**The tradeoff**: The scheduler uses a single shared `available_minutes_per_day` for all pets combined. This means one pet's tasks can consume most of the time, leaving little for others. An alternative would be to allocate a per-pet time slice (e.g., 40 min for Max, 40 min for Whiskers, 40 min for Rocky), ensuring fairness across all pets.
+
+**Why this is reasonable**: In reality, pet care is not fair—a dog needs more time than a guinea pig. A busy owner might prioritize their dog on some days. The global budget models real-world flexibility: if feeding the cat takes 10 min and walking the dog takes 40 min, that's 50 minutes of the 120-minute budget, allowing the owner to plan around it. Per-pet allocation would be too rigid and unrealistic for a typical household with mixed pet types.
+
+This tradeoff prioritizes realistic expressiveness over algorithmic fairness, which aligns with the scenario of a busy owner trying to keep all pets alive and reasonably happy.
 
 ---
 

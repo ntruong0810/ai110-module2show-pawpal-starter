@@ -3,6 +3,8 @@ Unit tests for PawPal+ system.
 Tests Task completion, Pet task management, and scheduling logic.
 """
 
+from datetime import date, timedelta
+
 import pytest
 from pawpal_system import (
 	Owner, Pet, Task, Plan, Scheduler,
@@ -236,9 +238,301 @@ class TestPetTaskManagement:
 		# Total should only count pending: 15 + 30 = 45
 		assert pet.total_daily_minutes() == 45
 
+	def test_has_time_overlap_returns_true_for_conflicting_tasks(self):
+		"""Verify overlap check detects intersecting custom time frames."""
+		pet = Pet(name="Max", pet_type="Dog")
+		existing = Task(
+			name="Morning Walk",
+			duration_minutes=30,
+			priority=Priority.HIGH,
+			required_for="Max",
+			custom_time_frame_start="08:00",
+			custom_time_frame_end="08:30",
+		)
+		candidate = Task(
+			name="Breakfast",
+			duration_minutes=15,
+			priority=Priority.CRITICAL,
+			required_for="Max",
+			custom_time_frame_start="08:20",
+			custom_time_frame_end="08:35",
+		)
+		pet.add_task(existing)
+
+		assert pet.has_time_overlap(candidate) is True
+
+	def test_has_time_overlap_returns_false_for_non_conflicting_tasks(self):
+		"""Verify overlap check allows non-overlapping custom time frames."""
+		pet = Pet(name="Max", pet_type="Dog")
+		existing = Task(
+			name="Morning Walk",
+			duration_minutes=30,
+			priority=Priority.HIGH,
+			required_for="Max",
+			custom_time_frame_start="08:00",
+			custom_time_frame_end="08:30",
+		)
+		candidate = Task(
+			name="Breakfast",
+			duration_minutes=15,
+			priority=Priority.CRITICAL,
+			required_for="Max",
+			custom_time_frame_start="08:30",
+			custom_time_frame_end="08:45",
+		)
+		pet.add_task(existing)
+
+		assert pet.has_time_overlap(candidate) is False
+
 
 class TestSchedulerLogic:
 	"""Test Scheduler's planning and sorting logic."""
+
+	def test_detect_schedule_conflicts_same_pet(self):
+		"""Verify scheduler detects overlapping tasks for same pet."""
+		owner = Owner("Alice", 120)
+		pet = Pet("Max", "Dog")
+
+		task1 = Task(
+			"Morning Walk",
+			20,
+			Priority.HIGH,
+			"Max",
+			custom_time_frame_start="08:00",
+			custom_time_frame_end="08:20",
+		)
+		task2 = Task(
+			"Breakfast",
+			15,
+			Priority.CRITICAL,
+			"Max",
+			custom_time_frame_start="08:10",
+			custom_time_frame_end="08:25",
+		)
+
+		pet.add_task(task1)
+		pet.add_task(task2)
+		owner.add_pet(pet)
+
+		scheduler = Scheduler()
+		conflicts = scheduler.detect_schedule_conflicts(owner)
+
+		assert len(conflicts) == 1
+		assert conflicts[0][0] is task1 or conflicts[0][0] is task2
+		assert conflicts[0][1] is task2 or conflicts[0][1] is task1
+
+	def test_detect_schedule_conflicts_different_pets(self):
+		"""Verify scheduler detects overlapping tasks across different pets."""
+		owner = Owner("Alice", 120)
+
+		dog = Pet("Max", "Dog")
+		cat = Pet("Whiskers", "Cat")
+
+		dog_task = Task(
+			"Walk",
+			20,
+			Priority.HIGH,
+			"Max",
+			custom_time_frame_start="08:00",
+			custom_time_frame_end="08:20",
+		)
+		cat_task = Task(
+			"Feed",
+			15,
+			Priority.CRITICAL,
+			"Whiskers",
+			custom_time_frame_start="08:10",
+			custom_time_frame_end="08:25",
+		)
+
+		dog.add_task(dog_task)
+		cat.add_task(cat_task)
+		owner.add_pet(dog)
+		owner.add_pet(cat)
+
+		scheduler = Scheduler()
+		conflicts = scheduler.detect_schedule_conflicts(owner)
+
+		assert len(conflicts) == 1
+		assert (conflicts[0][2] == "Max" and conflicts[0][3] == "Whiskers") or \
+		       (conflicts[0][2] == "Whiskers" and conflicts[0][3] == "Max")
+
+	def test_detect_schedule_conflicts_ignores_completed_tasks(self):
+		"""Verify scheduler ignores completed tasks when checking conflicts."""
+		owner = Owner("Alice", 120)
+		pet = Pet("Max", "Dog")
+
+		task1 = Task(
+			"Morning Walk",
+			20,
+			Priority.HIGH,
+			"Max",
+			custom_time_frame_start="08:00",
+			custom_time_frame_end="08:20",
+		)
+		task2 = Task(
+			"Breakfast",
+			15,
+			Priority.CRITICAL,
+			"Max",
+			custom_time_frame_start="08:10",
+			custom_time_frame_end="08:25",
+		)
+
+		pet.add_task(task1)
+		pet.add_task(task2)
+		owner.add_pet(pet)
+
+		task1.mark_completed()
+
+		scheduler = Scheduler()
+		conflicts = scheduler.detect_schedule_conflicts(owner)
+
+		assert len(conflicts) == 0
+
+	def test_get_conflict_report(self):
+		"""Verify conflict report formats conflicts as human-readable text."""
+		owner = Owner("Alice", 120)
+		pet = Pet("Max", "Dog")
+
+		task1 = Task(
+			"Walk",
+			20,
+			Priority.HIGH,
+			"Max",
+			custom_time_frame_start="08:00",
+			custom_time_frame_end="08:20",
+		)
+		task2 = Task(
+			"Feed",
+			15,
+			Priority.CRITICAL,
+			"Max",
+			custom_time_frame_start="08:10",
+			custom_time_frame_end="08:25",
+		)
+
+		pet.add_task(task1)
+		pet.add_task(task2)
+		owner.add_pet(pet)
+
+		scheduler = Scheduler()
+		report = scheduler.get_conflict_report(owner)
+
+		assert "CONFLICT" in report
+		assert "Walk" in report
+		assert "Feed" in report
+		assert "08:00" in report
+
+	def test_detect_schedule_conflicts_no_conflicts(self):
+		"""Verify scheduler returns empty list when no conflicts exist."""
+		owner = Owner("Alice", 120)
+		pet = Pet("Max", "Dog")
+
+		task1 = Task(
+			"Morning Walk",
+			20,
+			Priority.HIGH,
+			"Max",
+			custom_time_frame_start="08:00",
+			custom_time_frame_end="08:20",
+		)
+		task2 = Task(
+			"Breakfast",
+			15,
+			Priority.CRITICAL,
+			"Max",
+			custom_time_frame_start="08:30",
+			custom_time_frame_end="08:45",
+		)
+
+		pet.add_task(task1)
+		pet.add_task(task2)
+		owner.add_pet(pet)
+
+		scheduler = Scheduler()
+		conflicts = scheduler.detect_schedule_conflicts(owner)
+
+		assert len(conflicts) == 0
+
+	def test_mark_task_completed_daily_creates_next_occurrence(self):
+		"""Verify completing a daily task creates a new pending instance."""
+		pet = Pet("Max", "Dog")
+		task = Task(
+			"Feeding",
+			15,
+			Priority.CRITICAL,
+			"Max",
+			frequency=Frequency.DAILY,
+			due_date=date(2026, 4, 1),
+		)
+		pet.add_task(task)
+
+		scheduler = Scheduler()
+		next_task = scheduler.mark_task_completed(pet, "Feeding")
+
+		assert task.status == TaskStatus.COMPLETED
+		assert next_task is not None
+		assert next_task is not task
+		assert next_task.status == TaskStatus.PENDING
+		assert next_task.frequency == Frequency.DAILY
+		assert next_task.due_date == date(2026, 4, 2)
+		assert len(pet.tasks) == 2
+
+	def test_mark_task_completed_weekly_creates_next_occurrence(self):
+		"""Verify completing a weekly task creates a new pending instance."""
+		pet = Pet("Whiskers", "Cat")
+		task = Task(
+			"Grooming",
+			20,
+			Priority.MEDIUM,
+			"Whiskers",
+			frequency=Frequency.WEEKLY,
+			due_date=date(2026, 4, 1),
+		)
+		pet.add_task(task)
+
+		scheduler = Scheduler()
+		next_task = scheduler.mark_task_completed(pet, "Grooming")
+
+		assert task.status == TaskStatus.COMPLETED
+		assert next_task is not None
+		assert next_task.status == TaskStatus.PENDING
+		assert next_task.frequency == Frequency.WEEKLY
+		assert next_task.due_date == date(2026, 4, 8)
+
+	def test_create_next_occurrence_daily_defaults_from_today(self):
+		"""Verify daily recurrence uses today + 1 day if due date is missing."""
+		task = Task("Walk", 20, Priority.HIGH, "Max", frequency=Frequency.DAILY)
+		next_task = task.create_next_occurrence()
+
+		assert next_task is not None
+		assert next_task.due_date == date.today() + timedelta(days=1)
+
+	def test_mark_task_completed_once_does_not_create_next_occurrence(self):
+		"""Verify one-time tasks do not create another instance when completed."""
+		pet = Pet("Max", "Dog")
+		task = Task("Vet Visit", 30, Priority.HIGH, "Max", frequency=Frequency.ONCE)
+		pet.add_task(task)
+
+		scheduler = Scheduler()
+		next_task = scheduler.mark_task_completed(pet, "Vet Visit")
+
+		assert task.status == TaskStatus.COMPLETED
+		assert next_task is None
+		assert len(pet.tasks) == 1
+
+	def test_sort_by_time_sorts_hhmm_ascending(self):
+		"""Verify sort_by_time() sorts tasks by HH:MM values ascending."""
+		scheduler = Scheduler()
+
+		task1 = Task("Lunch Walk", 20, Priority.MEDIUM, "Max", custom_time_frame_start="12:30")
+		task2 = Task("Morning Feed", 10, Priority.CRITICAL, "Max", custom_time_frame_start="08:00")
+		task3 = Task("Evening Play", 15, Priority.LOW, "Max", custom_time_frame_start="18:45")
+
+		sorted_tasks = scheduler.sort_by_time([task1, task2, task3])
+
+		assert [t.name for t in sorted_tasks] == ["Morning Feed", "Lunch Walk", "Evening Play"]
 
 	def test_scheduler_generates_plans_for_all_pets(self):
 		"""Verify scheduler generates one plan per pet."""
@@ -345,6 +639,110 @@ class TestSchedulerLogic:
 
 class TestOwnerTaskAccess:
 	"""Test Owner's ability to access all pet tasks."""
+
+	def test_owner_has_time_overlap_detects_conflict_across_pets(self):
+		"""Verify owner-level overlap check catches conflicts between different pets."""
+		owner = Owner("Alice", 120)
+
+		dog = Pet("Max", "Dog")
+		cat = Pet("Whiskers", "Cat")
+
+		dog_task = Task(
+			"Morning Walk",
+			20,
+			Priority.HIGH,
+			"Max",
+			custom_time_frame_start="08:00",
+			custom_time_frame_end="08:20",
+		)
+		cat_candidate = Task(
+			"Feed Cat",
+			10,
+			Priority.CRITICAL,
+			"Whiskers",
+			custom_time_frame_start="08:10",
+			custom_time_frame_end="08:20",
+		)
+
+		dog.add_task(dog_task)
+		owner.add_pet(dog)
+		owner.add_pet(cat)
+
+		assert owner.has_time_overlap(cat_candidate) is True
+
+	def test_owner_has_time_overlap_returns_false_when_no_cross_pet_conflict(self):
+		"""Verify owner-level overlap check allows non-overlapping schedules."""
+		owner = Owner("Alice", 120)
+
+		dog = Pet("Max", "Dog")
+		cat = Pet("Whiskers", "Cat")
+
+		dog_task = Task(
+			"Morning Walk",
+			20,
+			Priority.HIGH,
+			"Max",
+			custom_time_frame_start="08:00",
+			custom_time_frame_end="08:20",
+		)
+		cat_candidate = Task(
+			"Feed Cat",
+			10,
+			Priority.CRITICAL,
+			"Whiskers",
+			custom_time_frame_start="08:20",
+			custom_time_frame_end="08:30",
+		)
+
+		dog.add_task(dog_task)
+		owner.add_pet(dog)
+		owner.add_pet(cat)
+
+		assert owner.has_time_overlap(cat_candidate) is False
+
+	def test_owner_filter_tasks_by_status(self):
+		"""Verify owner can filter tasks by completion status across pets."""
+		owner = Owner("Alice", 120)
+
+		dog = Pet("Max", "Dog")
+		cat = Pet("Whiskers", "Cat")
+
+		dog_task = Task("Walk", 30, Priority.HIGH, "Max")
+		cat_task = Task("Feed", 10, Priority.CRITICAL, "Whiskers")
+
+		dog.add_task(dog_task)
+		cat.add_task(cat_task)
+		owner.add_pet(dog)
+		owner.add_pet(cat)
+
+		dog_task.mark_completed()
+
+		completed = owner.filter_tasks(status=TaskStatus.COMPLETED)
+
+		assert len(completed) == 1
+		assert completed[0].name == "Walk"
+
+	def test_owner_filter_tasks_by_pet_name(self):
+		"""Verify owner can filter tasks by pet name."""
+		owner = Owner("Alice", 120)
+
+		dog = Pet("Max", "Dog")
+		cat = Pet("Whiskers", "Cat")
+
+		dog_task1 = Task("Walk", 30, Priority.HIGH, "Max")
+		dog_task2 = Task("Feed", 15, Priority.CRITICAL, "Max")
+		cat_task = Task("Clean Litter", 10, Priority.MEDIUM, "Whiskers")
+
+		dog.add_task(dog_task1)
+		dog.add_task(dog_task2)
+		cat.add_task(cat_task)
+		owner.add_pet(dog)
+		owner.add_pet(cat)
+
+		max_tasks = owner.filter_tasks(pet_name="Max")
+
+		assert len(max_tasks) == 2
+		assert all(task.required_for == "Max" for task in max_tasks)
 
 	def test_owner_get_all_tasks(self):
 		"""Verify owner can retrieve all tasks across all pets."""
