@@ -6,19 +6,27 @@
 
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
-In my initial UML design, I structured the system around a few core classes: Owner, Pet, Task, Scheduler, and Plan. The Owner class stores basic information about the user, such as available time and preferences. The Pet class represents the pet being cared for, including its type and needs.
-The Task class is central to the system, representing individual care activities like feeding, walking, or giving medication. Each task includes attributes such as duration and priority. The Scheduler class is responsible for generating a daily plan by selecting and organizing tasks based on constraints like available time and priority. Finally, the Plan class stores the resulting schedule and provides a way to display or explain it.
-Overall, I aimed to separate responsibilities clearly: data representation (Owner, Pet, Task) and decision-making logic (Scheduler), with Plan acting as the output container.
-**b. Design changes**
+  In my initial UML design, I structured the system around a few core classes: Owner, Pet, Task, Scheduler, and Plan. The Owner class stores basic information about the user, such as available time and preferences. The Pet class represents the pet being cared for, including its type and needs.
+  The Task class is central to the system, representing individual care activities like feeding, walking, or giving medication. Each task includes attributes such as duration and priority. The Scheduler class is responsible for generating a daily plan by selecting and organizing tasks based on constraints like available time and priority. Finally, the Plan class stores the resulting schedule and provides a way to display or explain it.
+  Overall, I aimed to separate responsibilities clearly: data representation (Owner, Pet, Task) and decision-making logic (Scheduler), with Plan acting as the output container.
+  **b. Design changes**
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
 
-During implementation, I made a key change to simplify the interaction between classes. Initially, I planned for the Scheduler to directly manage all logic, including filtering, sorting, and explanation generation. However, this made the Scheduler too complex and harder to maintain.
+Yes, I made several important changes during implementation:
 
-To improve this, I refactored part of the logic by adding helper methods (or lightweight internal functions) to handle specific tasks such as sorting tasks by priority and checking time constraints. This made the Scheduler more modular and easier to test.
+1. **Added Owner-Pet relationship**: Originally, `Owner` was standalone. I added `pet: Pet | None` to create a direct link between Owner and their Pet. This eliminates the need to pass Pet separately and makes the relationship explicit in the code.
 
-This change was important because it improved code readability, made debugging easier, and allowed me to test individual parts of the scheduling logic more effectively.
+2. **Enhanced Task with time windows and scoring**: I added `preferred_window` (e.g., "morning", "evening") and `mandatory` flag to Task, plus a new `score_for_owner()` method. This matches the UML better and supports more flexible scheduling logic based on user preferences.
+
+3. **Plan now references Owner and Pet**: Added `owner` and `pet` fields to Plan so that a generated schedule knows exactly whose plan it is. This simplifies context when displaying or explaining the plan.
+
+4. **Eliminated logic duplication in Scheduler**: The `_fits_time_budget()` method now delegates to `Task.is_feasible()` instead of duplicating the logic. This applies the DRY principle and ensures a single source of truth for feasibility checks.
+
+5. **Added docstrings to methods**: Clarified the purpose of key methods like `add_task()`, `summarize()`, and `is_feasible()` to improve code maintainability.
+
+These changes were made to reduce coupling, improve testability (each method has a single responsibility), and align the skeleton more closely with the UML design while keeping it clean and maintainable.
 
 ---
 
